@@ -20,4 +20,9 @@ defmodule DesafioDosTres.Board do
   def valid_move?(board, {row, col}) do
     board |> Enum.at(row) |> Enum.at(col) == "."
   end
+
+  def opponent_symbol?(board, {row, col}, player_symbol) do
+    current_symbol = board |> Enum.at(row) |> Enum.at(col)
+    current_symbol != "." and current_symbol != player_symbol
+  end
 end

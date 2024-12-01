@@ -18,9 +18,10 @@ defmodule DesafioDosTres.Game do
 
     {row, col} = get_move()
 
-    if Board.valid_move?(board, {row, col}) do
+    if Board.valid_move?(board, {row, col}) or (current_player.can_erase and Board.opponent_symbol?(board, {row, col}, current_player.symbol)) do
       new_board = Board.update_board(board, {row, col}, current_player.symbol)
-      loop(new_board, players, turn + 1)
+      new_players = update_player_can_erase(players, current_player, Board.opponent_symbol?(board, {row, col}, current_player.symbol))
+      loop(new_board, new_players, turn + 1)
     else
       IO.puts("Movimento inválido! Tente novamente.")
       loop(board, players, turn)
@@ -33,5 +34,22 @@ defmodule DesafioDosTres.Game do
     |> String.split()
     |> Enum.map(&String.to_integer/1)
     |> List.to_tuple()
+  end
+
+  defp update_player_can_erase(players, current_player, erased) do
+    updated_player =
+      if erased do
+        Player.update_can_erase(current_player, false)
+      else
+        Player.update_can_erase(current_player, true)
+      end
+
+    Enum.map(players, fn player ->
+      if player.name == current_player.name do
+        updated_player
+      else
+        player
+      end
+    end)
   end
 end
