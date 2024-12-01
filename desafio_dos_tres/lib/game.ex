@@ -8,10 +8,10 @@ defmodule DesafioDosTres.Game do
       Player.new("Jogador 2", "O"),
       Player.new("Jogador 3", "#")
     ]
-    loop(board, players, 0, nil)
+    loop(board, players, 0, nil, nil, %{last_erased: nil})
   end
 
-  defp loop(board, players, turn, last_erased_turn) do
+  defp loop(board, players, turn, last_erased_turn, last_erased_player, state) do
     current_player = Enum.at(players, rem(turn, length(players)))
     IO.puts("\nVez de #{current_player.name} (#{current_player.symbol})")
     Board.print_board(board)
@@ -22,17 +22,19 @@ defmodule DesafioDosTres.Game do
       Board.valid_move?(board, {row, col}) or
         (Player.can_erase?(current_player) and
            Board.opponent_symbol?(board, {row, col}, current_player.symbol) and
-           (last_erased_turn == nil or last_erased_turn + 1 < turn))
+           (state[:last_erased] == nil or state[:last_erased] != {row, col} or (turn - last_erased_turn) >= length(players) and last_erased_player != current_player.name))
+
 
     if can_play do
       erased = Board.opponent_symbol?(board, {row, col}, current_player.symbol)
       new_board = Board.update_board(board, {row, col}, current_player.symbol)
       new_players = update_player_can_erase(players, current_player, erased, turn)
       new_last_erased_turn = if erased, do: turn, else: last_erased_turn
-      loop(new_board, new_players, turn + 1, new_last_erased_turn)
+      new_last_erased_player = if erased, do: current_player.name, else: last_erased_player
+      loop(new_board, new_players, turn + 1, new_last_erased_turn, new_last_erased_player, Map.put(state, :last_erased, if erased do {row, col} else nil end))
     else
       IO.puts("Movimento inválido! Tente novamente.")
-      loop(board, players, turn, last_erased_turn)
+      loop(board, players, turn, last_erased_turn, last_erased_player, %{})
     end
   end
 
