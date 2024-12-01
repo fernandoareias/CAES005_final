@@ -8,23 +8,31 @@ defmodule DesafioDosTres.Game do
       Player.new("Jogador 2", "O"),
       Player.new("Jogador 3", "#")
     ]
-    loop(board, players, 0)
+    loop(board, players, 0, nil)
   end
 
-  defp loop(board, players, turn) do
+  defp loop(board, players, turn, last_erased_turn) do
     current_player = Enum.at(players, rem(turn, length(players)))
     IO.puts("\nVez de #{current_player.name} (#{current_player.symbol})")
     Board.print_board(board)
 
     {row, col} = get_move()
 
-    if Board.valid_move?(board, {row, col}) or (current_player.can_erase and Board.opponent_symbol?(board, {row, col}, current_player.symbol)) do
+    can_play =
+      Board.valid_move?(board, {row, col}) or
+        (Player.can_erase?(current_player) and
+           Board.opponent_symbol?(board, {row, col}, current_player.symbol) and
+           (last_erased_turn == nil or last_erased_turn + 1 < turn))
+
+    if can_play do
+      erased = Board.opponent_symbol?(board, {row, col}, current_player.symbol)
       new_board = Board.update_board(board, {row, col}, current_player.symbol)
-      new_players = update_player_can_erase(players, current_player, Board.opponent_symbol?(board, {row, col}, current_player.symbol))
-      loop(new_board, new_players, turn + 1)
+      new_players = update_player_can_erase(players, current_player, erased, turn)
+      new_last_erased_turn = if erased, do: turn, else: last_erased_turn
+      loop(new_board, new_players, turn + 1, new_last_erased_turn)
     else
       IO.puts("Movimento inválido! Tente novamente.")
-      loop(board, players, turn)
+      loop(board, players, turn, last_erased_turn)
     end
   end
 
@@ -36,10 +44,11 @@ defmodule DesafioDosTres.Game do
     |> List.to_tuple()
   end
 
-  defp update_player_can_erase(players, current_player, erased) do
+  defp update_player_can_erase(players, current_player, erased, turn) do
     updated_player =
       if erased do
         Player.update_can_erase(current_player, false)
+        |> Player.update_last_erased_turn(turn)
       else
         Player.update_can_erase(current_player, true)
       end
