@@ -18,20 +18,28 @@ defmodule DesafioDosTres.Game do
 
     {row, col} = get_move()
 
+
     can_play =
       Board.valid_move?(board, {row, col}) or
         (Player.can_erase?(current_player) and
            Board.opponent_symbol?(board, {row, col}, current_player.symbol) and
            (state[:last_erased] == nil or state[:last_erased] != {row, col} or (turn - last_erased_turn) >= length(players) and last_erased_player != current_player.name))
 
-
     if can_play do
       erased = Board.opponent_symbol?(board, {row, col}, current_player.symbol)
       new_board = Board.update_board(board, {row, col}, current_player.symbol)
-      new_players = update_player_can_erase(players, current_player, erased, turn)
+      new_players = update_player_can_erase(players, current_player, erased)
       new_last_erased_turn = if erased, do: turn, else: last_erased_turn
       new_last_erased_player = if erased, do: current_player.name, else: last_erased_player
-      loop(new_board, new_players, turn + 1, new_last_erased_turn, new_last_erased_player, Map.put(state, :last_erased, if erased do {row, col} else nil end))
+
+      case check_winner(new_board, current_player.symbol) do
+        {:winner, symbol} ->
+          IO.puts("#{current_player.name} venceu com o símbolo #{symbol}!")
+          Board.print_board(new_board)
+          :ok
+        :no_winner ->
+          loop(new_board, new_players, turn + 1, new_last_erased_turn, new_last_erased_player, Map.put(state, :last_erased, if erased do {row, col} else nil end))
+      end
     else
       IO.puts("Movimento inválido! Tente novamente.")
       loop(board, players, turn, last_erased_turn, last_erased_player, %{})
@@ -46,21 +54,59 @@ defmodule DesafioDosTres.Game do
     |> List.to_tuple()
   end
 
-  defp update_player_can_erase(players, current_player, erased, turn) do
+  defp update_player_can_erase(players, current_player, erased) do
     updated_player =
-      if erased do
-        Player.update_can_erase(current_player, false)
-        |> Player.update_last_erased_turn(turn)
-      else
-        Player.update_can_erase(current_player, true)
-      end
+      Enum.map(players, fn player ->
+        if player == current_player and erased do
+          Player.update_can_erase(player, false)
+        else
+          player
+        end
+      end)
+    updated_player
+  end
 
-    Enum.map(players, fn player ->
-      if player.name == current_player.name do
-        updated_player
-      else
-        player
-      end
+  defp check_winner(board, symbol) do
+    if check_horizontals(board, symbol) or
+       check_verticals(board, symbol) or
+       check_diagonals(board, symbol) do
+      {:winner, symbol}
+    else
+      :no_winner
+    end
+  end
+
+  defp check_horizontals(board, symbol) do
+    Enum.any?(board, fn row ->
+      Enum.chunk_every(row, 4, 1, :discard)
+      |> Enum.any?(fn chunk -> Enum.all?(chunk, fn cell -> cell == symbol end) end)
     end)
+  end
+
+  defp check_verticals(board, symbol) do
+    0..3
+    |> Enum.any?(fn col ->
+      Enum.chunk_every(Enum.map(board, fn row -> Enum.at(row, col) end), 4, 1, :discard)
+      |> Enum.any?(fn chunk -> Enum.all?(chunk, fn cell -> cell == symbol end) end)
+    end)
+  end
+
+  defp check_diagonals(board, symbol) do
+    # Diagonal principal (de cima para baixo, da esquerda para a direita)
+    Enum.any?(0..3, fn row ->
+      Enum.any?(0..3, fn col ->
+        check_diagonal(board, row, col, symbol)
+      end)
+    end)
+  end
+
+  defp check_diagonal(board, row, col, symbol) do
+    for i <- 0..3 do
+      case Enum.at(board, row + i) do
+        nil -> false
+        row -> Enum.at(row, col + i) == symbol
+      end
+    end
+    |> Enum.all?()
   end
 end
