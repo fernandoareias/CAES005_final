@@ -9,10 +9,6 @@ defmodule DesafioDosTres.Player do
     %DesafioDosTres.Player{player | can_erase: value}
   end
 
-  def update_last_erased_turn(player, value) do
-    %DesafioDosTres.Player{player | last_erased_turn: value}
-  end
-
   def can_erase?(%DesafioDosTres.Player{can_erase: can_erase}) do
     can_erase
   end
